@@ -38,9 +38,6 @@ declare -rg PURPLE='\033[0;35m'
 declare -rg CYAN='\033[0;36m'
 declare -rg WHITE='\033[0;37m'
 
-# MAKEFILE_NAME='build_asm.mak'
-MAKEFILE_NAME="$(mktemp)"
-declare -rg MAKEFILE_NAME
 declare -rg QEMU_PORT=27182
 
 on_exit () {
@@ -69,6 +66,11 @@ on_exit () {
     else
         warning "Makefile does not exist; not removing."
     fi
+
+    # Remove build directory. IMPORTANT: Project should have already been cleaned,
+    # which means there should be nothing in there. Thus, we should be able to 
+    # safely remove the directory.
+    rmdir -- "$BUILD_DIR" || warning "Failed to remove build directory"
 
     info "Leaving project directory"
     if ! cd - > /dev/null 2>&1; then
@@ -105,7 +107,7 @@ run_make () {
     [ ! -f "$MAKEFILE_NAME" ] && die 2 "Makefile '$MAKEFILE_NAME' not found (was it extracted?)"
     local target="$1"
     shift
-    local makeargs=( -f "$MAKEFILE_NAME" "$target" )
+    local makeargs=( -C "$BUILD_DIR" -f "$MAKEFILE_NAME" "$target" )
 
     # Make *loves* to complain about blank arguments instead of just ignoring them. Only pass the non-zero length ones.
     for arg in "$@"; do
@@ -274,6 +276,18 @@ cd "$project_dir" || die 1 "Cannot enter project directory"
 
 # Don't set trap until after initialization phase
 trap on_exit EXIT
+
+MAKEFILE_NAME="$(mktemp)"
+declare -rg MAKEFILE_NAME
+
+# The build directory might exist, so we'll just find another name.
+BUILD_DIR="$project_dir/build"
+suffix=0
+while [ -x "$BUILD_DIR" ]; do
+    BUILD_DIR="$project_dir/build$suffix"
+    ((suffix++))
+done
+declare -rg BUILD_DIR
 
 info "Extracting makefile"
 extract_makefile
