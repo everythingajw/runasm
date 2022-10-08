@@ -100,9 +100,10 @@ die () {
 
 cat_makefile () {
     cat <<'EOF'
+build_dir   = ./build
 target_file = $(wildcard *.s)
-object_file = $(patsubst %.s,%.o,$(target_file))
-exe_file    = $(patsubst %.o,%,$(object_file))
+object_file = $(build_dir)/$(patsubst %.s,%.o,$(target_file))
+exe_file    = $(build_dir)/$(patsubst %.o,%,$(object_file))
 #link_opts   = -lc
 
 debug_flags = 
@@ -123,10 +124,11 @@ compile: check_file_count
 #ifdef DEBUG
 #	@echo 'INFO: Debug mode on'
 #endif
+	@mkdir $(build_dir) || $(error Cannot create build directory. A file exists with the same name.)
 	aarch64-linux-gnu-as $(debug_flags) $(target_file) -o $(object_file)
 
 link: compile
-	aarch64-linux-gnu-ld $(debug_flags) $(object_file) -o $(exe_file) $(link_opts)
+	aarch64-linux-gnu-ld $(debug_flags) $(link_opts) $(object_file) -o $(exe_file)
 	@file $(exe_file)
 	rm -f $(object_file)
 
@@ -141,13 +143,14 @@ extract_makefile () {
     # sed '0,/^##section:MAKEFILE##$/d' "$0" > "$MAKEFILE_NAME" || die 1 "Failed to extract makefile"
     cat_makefile > "$MAKEFILE_NAME" || die 1 "Failed to extract makefile"
     info "Makefile extracted to $MAKEFILE_NAME"
+    cat "$MAKEFILE_NAME"
 }
 
 run_make () {
     [ ! -f "$MAKEFILE_NAME" ] && die 2 "Makefile '$MAKEFILE_NAME' not found (was it extracted?)"
     local target="$1"
     shift
-    local makeargs=( -C "$BUILD_DIR" -f "$MAKEFILE_NAME" "$target" )
+    local makeargs=( -C "$project_dir" --no-print-directory -f "$MAKEFILE_NAME" "$target" )
 
     # Make *loves* to complain about blank arguments instead of just ignoring them. Only pass the non-zero length ones.
     for arg in "$@"; do
@@ -187,7 +190,7 @@ start_gdb () {
 
     if [ -z "$gdb_new_window" ] || [ -z "$terminal_emulator" ]; then
         gdb-multiarch -nh -q \
-            "$project_exe_name" \
+            "./$project_exe_name" \
             -ex 'layout regs' \
             -ex 'list' \
             -ex 'set disassemble-next-line on' \
@@ -320,17 +323,8 @@ trap on_exit EXIT
 MAKEFILE_NAME="$(mktemp)"
 declare -rg MAKEFILE_NAME
 
-# The build directory might exist, so we'll just find another name.
-BUILD_DIR="$project_dir/build"
-suffix=0
-while [ -x "$BUILD_DIR" ]; do
-    BUILD_DIR="$project_dir/build$suffix"
-    ((suffix++))
-done
-declare -rg BUILD_DIR
-
-# info "Extracting makefile"
-# extract_makefile
+info "Extracting makefile"
+extract_makefile
 
 info "Building project"
 make_build_opts=
