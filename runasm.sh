@@ -4,7 +4,7 @@
 # Description: compile, link, and run a single-file assembly program 
 # Author:      Anthony (AJ) Webster
 # Date:        October 4, 2022
-# Version:     1.0.0
+# Version:     1.0.1
 # License:     MIT License
 # 
 # Copyright (c) 2022 Anthony Webster
@@ -62,7 +62,7 @@ on_exit () {
     done
 
     if [ -f "$MAKEFILE_NAME" ]; then
-        rm -fv "$MAKEFILE_NAME"
+        rm -f "$MAKEFILE_NAME"
     else
         warning "Makefile does not exist; not removing."
     fi
@@ -98,7 +98,7 @@ cat_makefile () {
 build_dir   = ./build
 target_file = $(wildcard *.s)
 object_file = $(build_dir)/$(patsubst %.s,%.o,$(target_file))
-exe_file    = $(build_dir)/$(patsubst %.o,%,$(object_file))
+exe_file    = $(patsubst %.o,%,$(object_file))
 #link_opts   = -lc
 
 debug_flags = 
@@ -119,7 +119,8 @@ compile: check_file_count
 #ifdef DEBUG
 #	@echo 'INFO: Debug mode on'
 #endif
-	@mkdir $(build_dir) || $(error Cannot create build directory. A file exists with the same name exists.)
+# If a non-directory exists with the same name as the build directory, we can't make the directory.
+	@[ -d "$(build_dir)" ] || mkdir -- "$(build_dir)"
 	aarch64-linux-gnu-as $(debug_flags) $(target_file) -o $(object_file)
 
 link: compile
@@ -138,7 +139,6 @@ extract_makefile () {
     # sed '0,/^##section:MAKEFILE##$/d' "$0" > "$MAKEFILE_NAME" || die 1 "Failed to extract makefile"
     cat_makefile > "$MAKEFILE_NAME" || die 1 "Failed to extract makefile"
     info "Makefile extracted to $MAKEFILE_NAME"
-    cat "$MAKEFILE_NAME"
 }
 
 run_make () {
@@ -155,22 +155,22 @@ run_make () {
     make "${makeargs[@]}"
 }
 
-get_exe_name () {
-    # Assume that, since we've probably already run make, we'll only have one .s file
+get_exe_path () {
+    # The executable should be the only file in the build directory WITHOUT an extension.
     local asm_file
-    asm_file="$(ls ./*.s)"
-    echo "${asm_file%.*}"
+    asm_file="$(find "$project_dir/build" -type f -not -iname '*.*')"
+    realpath -- "${asm_file%.*}"
 }
 
 start_qemu () {
     local elf_path=/usr/aarch64-linux-gnu/
     if [ -z "$run_gdb" ]; then
         info "Running"
-        qemu-aarch64 -L "$elf_path" "./$project_exe_name"
+        qemu-aarch64 -L "$elf_path" "$(get_exe_path)"
         info "Program exited with code $?"
     else 
         info "Starting qemu-aarch64 on port $QEMU_PORT"
-        qemu-aarch64 -L "$elf_path" -g "${QEMU_PORT}" "$project_exe_name" &
+        qemu-aarch64 -L "$elf_path" -g "${QEMU_PORT}" "$(get_exe_path)" &
         sleep 1
     fi
 }
@@ -185,7 +185,7 @@ start_gdb () {
 
     if [ -z "$gdb_new_window" ] || [ -z "$terminal_emulator" ]; then
         gdb-multiarch -nh -q \
-            "./$project_exe_name" \
+            "$(get_exe_path)" \
             -ex 'layout regs' \
             -ex 'list' \
             -ex 'set disassemble-next-line on' \
@@ -196,15 +196,16 @@ start_gdb () {
 
     else
         # This is kind of gross. But I can do this or fight with escaping quotes. I'll choose this.
-        local gdb_args="-nh -q"
-        local gdb_args="${gdb_args} './$project_exe_name'"
-        local gdb_args="${gdb_args} -ex 'layout regs'"
-        local gdb_args="${gdb_args} -ex 'list'"
-        local gdb_args="${gdb_args} -ex 'set disassemble-next-line on'"
-        local gdb_args="${gdb_args} -ex 'target remote localhost:$QEMU_PORT'"
-        local gdb_args="${gdb_args} -ex 'set solib-search-path /usr/aarch64-linux-gnu-lib/'"
+        local gdb_args
+        gdb_args="-nh -q"
+        gdb_args="${gdb_args} '$(get_exe_path)'"
+        gdb_args="${gdb_args} -ex 'layout regs'"
+        gdb_args="${gdb_args} -ex 'list'"
+        gdb_args="${gdb_args} -ex 'set disassemble-next-line on'"
+        gdb_args="${gdb_args} -ex 'target remote localhost:$QEMU_PORT'"
+        gdb_args="${gdb_args} -ex 'set solib-search-path /usr/aarch64-linux-gnu-lib/'"
 
-        local gdb_cmd="gdb-multiarch $gdb_args"
+        gdb_cmd="gdb-multiarch $gdb_args"
 
         case "$terminal_emulator" in
             konsole)
@@ -269,7 +270,7 @@ EOF
 
 version () {
     cat <<EOF
-runasm version 1.0.0
+runasm version 1.0.1
 Copyright (c) 2022 Anthony Webster
 Licensed under the MIT License: https://spdx.org/licenses/MIT.html
 EOF
@@ -309,6 +310,9 @@ if [ "$valid_opts" = '0' ]; then
     die 1 "Invalid arguments."
 fi
 
+# Resolve project directory
+project_dir="$(realpath -- "$project_dir")"
+
 info "Entering project directory $project_dir"
 cd "$project_dir" || die 1 "Cannot enter project directory"
 
@@ -325,8 +329,6 @@ info "Building project"
 make_build_opts=
 [ -n "$run_gdb" ] && make_build_opts=('DEBUG=y')
 run_make build "${make_build_opts[@]}" || die $? "make failed with exit code $?"
-
-project_exe_name="$(get_exe_name)"
 
 which_quiet () {
     which "$@" > /dev/null 2>&1
