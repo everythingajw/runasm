@@ -67,11 +67,6 @@ on_exit () {
         warning "Makefile does not exist; not removing."
     fi
 
-    # Remove build directory. IMPORTANT: Project should have already been cleaned,
-    # which means there should be nothing in there. Thus, we should be able to 
-    # safely remove the directory.
-    rmdir -- "$BUILD_DIR" || warning "Failed to remove build directory"
-
     info "Leaving project directory"
     if ! cd - > /dev/null 2>&1; then
         warning "Failed to leave project directory"
@@ -124,7 +119,7 @@ compile: check_file_count
 #ifdef DEBUG
 #	@echo 'INFO: Debug mode on'
 #endif
-	@mkdir $(build_dir) || $(error Cannot create build directory. A file exists with the same name.)
+	@mkdir $(build_dir) || $(error Cannot create build directory. A file exists with the same name exists.)
 	aarch64-linux-gnu-as $(debug_flags) $(target_file) -o $(object_file)
 
 link: compile
