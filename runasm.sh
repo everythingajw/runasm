@@ -98,8 +98,48 @@ die () {
     exit "$code"
 }
 
+cat_makefile () {
+    cat <<'EOF'
+target_file = $(wildcard *.s)
+object_file = $(patsubst %.s,%.o,$(target_file))
+exe_file    = $(patsubst %.o,%,$(object_file))
+#link_opts   = -lc
+
+debug_flags = 
+ifdef DEBUG
+	debug_flags = -g
+endif
+
+.PHONY: check_file_count
+
+all: compile link
+
+check_file_count:
+ifneq "$(words $(target_file))" '1'
+	$(error Expected 1 .s file, got $(words $(target_file)))
+endif
+
+compile: check_file_count
+#ifdef DEBUG
+#	@echo 'INFO: Debug mode on'
+#endif
+	aarch64-linux-gnu-as $(debug_flags) $(target_file) -o $(object_file)
+
+link: compile
+	aarch64-linux-gnu-ld $(debug_flags) $(object_file) -o $(exe_file) $(link_opts)
+	@file $(exe_file)
+	rm -f $(object_file)
+
+build: compile link
+
+clean:
+	rm -f $(object_file) $(exe_file)
+EOF
+}
+
 extract_makefile () {
-    sed '0,/^##section:MAKEFILE##$/d' "$0" > "$MAKEFILE_NAME" || die 1 "Failed to extract makefile"
+    # sed '0,/^##section:MAKEFILE##$/d' "$0" > "$MAKEFILE_NAME" || die 1 "Failed to extract makefile"
+    cat_makefile > "$MAKEFILE_NAME" || die 1 "Failed to extract makefile"
     info "Makefile extracted to $MAKEFILE_NAME"
 }
 
@@ -289,8 +329,8 @@ while [ -x "$BUILD_DIR" ]; do
 done
 declare -rg BUILD_DIR
 
-info "Extracting makefile"
-extract_makefile
+# info "Extracting makefile"
+# extract_makefile
 
 info "Building project"
 make_build_opts=
@@ -329,39 +369,3 @@ start_qemu
 [ -n "$run_gdb" ] && start_gdb
 
 exit 0
-
-##section:MAKEFILE##
-target_file = $(wildcard *.s)
-object_file = $(patsubst %.s,%.o,$(target_file))
-exe_file    = $(patsubst %.o,%,$(object_file))
-#link_opts   = -lc
-
-debug_flags = 
-ifdef DEBUG
-	debug_flags = -g
-endif
-
-.PHONY: check_file_count
-
-all: compile link
-
-check_file_count:
-ifneq "$(words $(target_file))" '1'
-	$(error Expected 1 .s file, got $(words $(target_file)))
-endif
-
-compile: check_file_count
-#ifdef DEBUG
-#	@echo 'INFO: Debug mode on'
-#endif
-	aarch64-linux-gnu-as $(debug_flags) $(target_file) -o $(object_file)
-
-link: compile
-	aarch64-linux-gnu-ld $(debug_flags) $(object_file) -o $(exe_file) $(link_opts)
-	@file $(exe_file)
-	rm -f $(object_file)
-
-build: compile link
-
-clean:
-	rm -f $(object_file) $(exe_file)
