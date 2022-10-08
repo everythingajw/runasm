@@ -1,10 +1,18 @@
 # runasm
 
-Run a single-file aarch64 assembly program.
+Build and run a single-file aarch64 assembly program.
 
 ## Usage
 
 Run `runasm.sh` with `-h` or `--help` for usage.
+Examples are below.
+
+## Obtaining
+
+You can clone the repository or just download the script itself.
+I suggest you place this in a directory on your PATH so you can access it everywhere.
+
+Remember to make the script executable: `chmod +x /path/to/runasm.sh`
 
 ## Examples
 
