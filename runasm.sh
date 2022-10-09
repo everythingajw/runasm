@@ -387,8 +387,8 @@ elif which_quiet gnome-terminal; then
     # launch it and wait for that terminal to close. So in this case, we'll launch
     # in the same window.
 
-    warning "gnome-terminal is not currently supported for running in a separate window."
-    warning "gdb will be launched in the current terminal."
+    warn "gnome-terminal is not currently supported for running in a separate window."
+    warn "gdb will be launched in the current terminal."
 
     terminal_emulator=''
 elif which_quiet xterm; then
