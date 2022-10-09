@@ -4,7 +4,7 @@
 # Description: compile, link, and run a single-file assembly program 
 # Author:      Anthony (AJ) Webster
 # Date:        October 4, 2022
-# Version:     1.0.2
+# Version:     1.0.3
 # License:     MIT License
 # 
 # Copyright (c) 2022 Anthony Webster
@@ -286,7 +286,7 @@ EOF
 
 version () {
     cat <<EOF
-runasm version 1.0.2
+runasm version 1.0.3
 Copyright (c) 2022 Anthony Webster
 Licensed under the MIT License: https://spdx.org/licenses/MIT.html
 EOF
