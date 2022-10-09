@@ -49,8 +49,10 @@ on_exit () {
         if [ -f "$MAKEFILE_NAME" ]; then 
             run_make clean
         else 
-            warning "Makefile does not exist; cannot run make clean"
+            warn "Makefile does not exist; cannot run make clean"
         fi
+    else
+        warn "Not cleaning build directory"
     fi
 
     for pid in $(jobs -p | tail -n +1); do
@@ -66,12 +68,12 @@ on_exit () {
     if [ -f "$MAKEFILE_NAME" ]; then
         rm -f "$MAKEFILE_NAME"
     else
-        warning "Makefile does not exist; not removing."
+        warn "Makefile does not exist; not removing."
     fi
 
     info "Leaving project directory"
     if ! cd - > /dev/null 2>&1; then
-        warning "Failed to leave project directory"
+        warn "Failed to leave project directory"
     fi
 }
 
@@ -109,7 +111,9 @@ ifdef DEBUG
 endif
 
 ifdef STATIC_LINK
-	link_opts = -static
+	link_opts += -static
+#else
+#	link_opts += --dynamic-linker=ld-linux-aarch64.so.1
 endif
 
 ifdef LINK_LIBS
@@ -136,7 +140,7 @@ compile: check_file_count
 	aarch64-linux-gnu-as $(debug_flags) $(target_file) -o $(object_file)
 
 link: compile
-	aarch64-linux-gnu-ld $(debug_flags) $(object_file) -o $(exe_file) $(link_opts) 
+	aarch64-linux-gnu-ld $(debug_flags) $(link_opts) -o $(exe_file) $(object_file) 
 	@file $(exe_file)
 	rm -f $(object_file)
 
