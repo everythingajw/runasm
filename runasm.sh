@@ -45,10 +45,12 @@ on_exit () {
 
     # Only run the cleanup recipe if the makefile exists.
     # run_make will crash and burn if the makefile does not exist.
-    if [ -f "$MAKEFILE_NAME" ]; then 
-        run_make clean
-    else 
-        warning "Makefile does not exist; cannot run make clean"
+    if [ -n "$clean_project_when_done" ]; then
+        if [ -f "$MAKEFILE_NAME" ]; then 
+            run_make clean
+        else 
+            warning "Makefile does not exist; cannot run make clean"
+        fi
     fi
 
     for pid in $(jobs -p | tail -n +1); do
@@ -240,15 +242,16 @@ Options:
                         specified, the current directory is assumed. If the 
                         directory starts with '-' (such as '-sample'), further qualify
                         the path (e.g. '-sample' becomes './-sample' or '/home/user/-sample').
-    -g, --gdb           Run gdb
-    -w, --window-gdb    Run gdb in a new terminal window (has no effect without -g)
+    -g, --gdb           Run gdb.
+    -w, --window-gdb    Run gdb in a new terminal window (has no effect without -g),
                         This option is not supported if using gnome-terminal.
     --link-dynamic      Dynamically link libraries instead of statically linking
                         (default: static linking)
-    -l <LIB>, --link-lib <LIB>    Link the library LIB. 
-    -h, --help          Show this help and exit
-    --examples          Show a quick how-to with examples
-    --version           Show version information and exit
+    -l <LIB>, --link-lib <LIB>    Link the library LIB.
+    --no-clean          Do not remove build files when the program terminates.
+    -h, --help          Show this help and exit.
+    --examples          Show a quick how-to with examples.
+    --version           Show version information and exit.
 EOF
     exit 0
 }
@@ -304,6 +307,7 @@ if [ $# -ge 1 ] && [[ ! "$1" =~ ^- ]]; then
     shift
 fi
 
+clean_project_when_done='y'
 static_link='y'
 run_gdb=''
 gdb_new_window=''
@@ -320,6 +324,7 @@ while [ $# -ne 0 ]; do
             shift
             libs_to_link+=( "$1" )
             ;;
+        --no-clean) clean_project_when_done='' ;;
         -h|--help) usage ;;
         --examples) examples ;;
         --version) version ;;
