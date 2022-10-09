@@ -99,11 +99,21 @@ build_dir   = ./build
 target_file = $(wildcard *.s)
 object_file = $(build_dir)/$(patsubst %.s,%.o,$(target_file))
 exe_file    = $(patsubst %.o,%,$(object_file))
-#link_opts   = -lc
+link_opts   = 
 
 debug_flags = 
 ifdef DEBUG
 	debug_flags = -g
+endif
+
+ifdef STATIC_LINK
+	link_opts = -static
+endif
+
+ifdef LINK_LIBS
+#	Since the link options are passed as one string (i.e. '-lc -lm'), we need to split them.
+#	TODO: How will this work with a library that has spaces in the name?
+	link_opts += $(shell printf "%s" $(LINK_LIBS))
 endif
 
 .PHONY: check_file_count
@@ -124,7 +134,7 @@ compile: check_file_count
 	aarch64-linux-gnu-as $(debug_flags) $(target_file) -o $(object_file)
 
 link: compile
-	aarch64-linux-gnu-ld $(debug_flags) $(link_opts) $(object_file) -o $(exe_file)
+	aarch64-linux-gnu-ld $(debug_flags) $(object_file) -o $(exe_file) $(link_opts) 
 	@file $(exe_file)
 	rm -f $(object_file)
 
@@ -233,6 +243,9 @@ Options:
     -g, --gdb           Run gdb
     -w, --window-gdb    Run gdb in a new terminal window (has no effect without -g)
                         This option is not supported if using gnome-terminal.
+    --link-dynamic      Dynamically link libraries instead of statically linking
+                        (default: static linking)
+    -l <LIB>, --link-lib <LIB>    Link the library LIB. 
     -h, --help          Show this help and exit
     --examples          Show a quick how-to with examples
     --version           Show version information and exit
@@ -246,7 +259,7 @@ examples () {
     local demo_dir='/home/example/demo_project'
     cat <<EOF
 For these examples, suppose there is a project in the current directory
-and a project in another directory, which we will call /home/example/demo_project.
+and a project in another directory, which we will call $demo_dir.
 
 A project directory should contain exactly one .s file. If it contains 
 more than one, the build will fail.
@@ -277,6 +290,10 @@ EOF
     exit 0
 }
 
+trim_str () {
+    echo "$@" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
+}
+
 # Please cause errors if a variable is unset. Please.
 set -u
 
@@ -287,19 +304,28 @@ if [ $# -ge 1 ] && [[ ! "$1" =~ ^- ]]; then
     shift
 fi
 
+static_link='y'
 run_gdb=''
 gdb_new_window=''
 valid_opts='1'
+libs_to_link=()
 invalid_args=()
-for arg in "$@"; do
+while [ $# -ne 0 ]; do
+    arg="$1"
     case "$arg" in
         -g|--gdb) run_gdb='y' ;;
         -w|--window-gdb) gdb_new_window='y' ;;
+        --link-dynamic) static_link='' ;;
+        -l|--link-lib) 
+            shift
+            libs_to_link+=( "$1" )
+            ;;
         -h|--help) usage ;;
         --examples) examples ;;
         --version) version ;;
         *) invalid_args+=("$arg") ;;
     esac
+    shift
 done
 
 # 0 means the options were not valid
@@ -326,8 +352,16 @@ info "Extracting makefile"
 extract_makefile
 
 info "Building project"
-make_build_opts=
-[ -n "$run_gdb" ] && make_build_opts=('DEBUG=y')
+make_build_opts=()
+[ -n "$run_gdb" ] && make_build_opts+=('DEBUG=y')
+[ -n "$static_link" ] && make_build_opts+=('STATIC_LINK=y')
+make_link_libs_opt=""
+for lib in "${libs_to_link[@]}"; do
+    make_link_libs_opt="${make_link_libs_opt} -l${lib}"
+done
+make_link_libs_opt=$(trim_str "$make_link_libs_opt")
+[ -n "$make_link_libs_opt" ] && make_build_opts+=("LINK_LIBS='${make_link_libs_opt}'")
+echo "${make_build_opts[@]}"
 run_make build "${make_build_opts[@]}" || die $? "make failed with exit code $?"
 
 which_quiet () {
