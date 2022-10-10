@@ -29,13 +29,18 @@
 
 # Colors
 declare -rg COLOR_OFF='\033[0m'
+# shellcheck disable=SC2034
 declare -rg BLACK='\033[0;30m'
 declare -rg RED='\033[0;31m'
 declare -rg GREEN='\033[0;32m'
 declare -rg YELLOW='\033[0;33m'
+# shellcheck disable=SC2034
 declare -rg BLUE='\033[0;34m'
+# shellcheck disable=SC2034
 declare -rg PURPLE='\033[0;35m'
+# shellcheck disable=SC2034
 declare -rg CYAN='\033[0;36m'
+# shellcheck disable=SC2034
 declare -rg WHITE='\033[0;37m'
 
 declare -rg QEMU_PORT=27182
@@ -281,16 +286,12 @@ EOF
 }
 
 version () {
-    cat <<EOF
+    cat <<'EOF'
 runasm version 1.0.4
 Copyright (c) 2022 Anthony Webster
 Licensed under the MIT License: https://spdx.org/licenses/MIT.html
 EOF
     exit 0
-}
-
-trim_str () {
-    echo "$@" | sed 's/^[[:space:]]*//' | sed 's/[[:space:]]*$//'
 }
 
 # Please cause errors if a variable is unset. Please.
