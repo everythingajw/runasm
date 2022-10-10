@@ -317,8 +317,9 @@ while [ $# -ne 0 ]; do
         -w|--window-gdb) gdb_new_window='y' ;;
         -l|--link-lib) 
             shift
-            libs_to_link+=( "$1" )
+            libs_to_link+=("$1")
             ;;
+        -l*) libs_to_link+=("${1/#-l/}") ;;
         --no-clean) clean_project_when_done='' ;;
         -h|--help) usage ;;
         --examples) examples ;;
