@@ -41,3 +41,8 @@ Run the project in a specific directory with gdb:
 
 Before reporting a bug, make sure you're running the latest version.
 If the bug persists, you can open an issue. Please include what version you're running in the issue.
+
+## Known issues
+
+- When debugging a dynamically linked executable, gdb will say "unable to find dynamic linker breakpoint function".
+  - Workaround: type `list` to see your program, then debug as usual. When debugging a call to a linked function (such as `printf` or `fflush`), step over the call.
