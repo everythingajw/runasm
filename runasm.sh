@@ -45,6 +45,9 @@ declare -rg WHITE='\033[0;37m'
 
 declare -rg QEMU_PORT=27182
 
+STDOUT="/proc/$$/fd/1"
+STDERR="/proc/$$/fd/2"
+
 on_exit () {
     info "Cleaning up..."
 
@@ -61,13 +64,13 @@ on_exit () {
     fi
 
     for pid in $(jobs -p | tail -n +1); do
-        echo "Killing background job $pid"
+        echo "Killing background job $pid" > "$STDOUT"
 
         # It's entirely possible that, between the time of getting all the background jobs
         # and actually killing those jobs, the process has already terminated. Thus, we kill
         # nothing and kill returns an error. We'll just ignore this since we already have
         # what we wanted (the process has died).
-        kill -9 "$pid" 2> /dev/null || true
+        kill -9 "$pid" > "$STDOUT" 2> /dev/null || true
     done
 
     if [ -f "$MAKEFILE_NAME" ]; then
@@ -83,15 +86,15 @@ on_exit () {
 }
 
 info () {
-    printf "${GREEN}INFO: %s${COLOR_OFF}\n" "$*"
+    printf "${GREEN}INFO: %s${COLOR_OFF}\n" "$*" > "$STDOUT"
 }
 
 warn () {
-    printf "${YELLOW}WARNING: %s${COLOR_OFF}\n" "$*" >&2
+    printf "${YELLOW}WARNING: %s${COLOR_OFF}\n" "$*" > "$STDERR"
 }
 
 error () {
-    printf "${RED}ERROR: %s${COLOR_OFF}\n" "$*" >&2
+    printf "${RED}ERROR: %s${COLOR_OFF}\n" "$*" > "$STDERR"
 }
 
 die () {
@@ -167,7 +170,7 @@ run_make () {
         [ -n "$arg" ] && local makeargs+=( "$arg" )
     done
 
-    make "${makeargs[@]}"
+    make "${makeargs[@]}" > "$STDOUT"
 }
 
 get_exe_path () {
@@ -250,6 +253,8 @@ Options:
                         This option is not supported if using gnome-terminal.
     -l <LIB>, --link-lib <LIB>    Link the library LIB.
     --no-clean          Do not remove build files when the program terminates.
+    -q, --quiet         Only show output from the assembly program. Error output
+                        is still shown.
     -h, --help          Show this help and exit.
     --examples          Show a quick how-to with examples.
     --version           Show version information and exit.
@@ -321,6 +326,8 @@ while [ $# -ne 0 ]; do
             ;;
         -l*) libs_to_link+=("${1/#-l/}") ;;
         --no-clean) clean_project_when_done='' ;;
+        -q|--quiet) STDOUT='/dev/null' ;;
+
         -h|--help) usage ;;
         --examples) examples ;;
         --version) version ;;
@@ -328,6 +335,9 @@ while [ $# -ne 0 ]; do
     esac
     shift
 done
+
+declare -rg STDOUT
+declare -rg STDERR
 
 # 0 means the options were not valid
 if [ "$valid_opts" = '0' ]; then
