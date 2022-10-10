@@ -354,7 +354,7 @@ extract_makefile
 info "Building project"
 make_build_opts=()
 [ -n "$run_gdb" ] && make_build_opts+=('DEBUG=y')
-[[ ! "${libs_to_link[*]}" =~ ^[[:space:]]$ ]] && make_build_opts+=("LINK_LIBS='${libs_to_link[@]/%/-l}'")
+[[ ! "${libs_to_link[*]}" =~ ^[[:space:]]$ ]] && make_build_opts+=("LINK_LIBS='${libs_to_link[@]/#/-l}'")
 run_make build "${make_build_opts[@]}" || die $? "make failed with exit code $?"
 
 which_quiet () {
