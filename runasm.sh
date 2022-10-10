@@ -4,7 +4,7 @@
 # Description: compile, link, and run a single-file assembly program 
 # Author:      Anthony (AJ) Webster
 # Date:        October 4, 2022
-# Version:     1.0.3
+# Version:     1.0.4
 # License:     MIT License
 # 
 # Copyright (c) 2022 Anthony Webster
@@ -108,12 +108,6 @@ link_opts   =
 debug_flags = 
 ifdef DEBUG
 	debug_flags = -g
-endif
-
-ifdef STATIC_LINK
-	link_opts += -static
-#else
-#	link_opts += --dynamic-linker=ld-linux-aarch64.so.1
 endif
 
 ifdef LINK_LIBS
@@ -249,8 +243,6 @@ Options:
     -g, --gdb           Run gdb.
     -w, --window-gdb    Run gdb in a new terminal window (has no effect without -g),
                         This option is not supported if using gnome-terminal.
-    --link-dynamic      Dynamically link libraries instead of statically linking
-                        (default: static linking)
     -l <LIB>, --link-lib <LIB>    Link the library LIB.
     --no-clean          Do not remove build files when the program terminates.
     -h, --help          Show this help and exit.
@@ -290,7 +282,7 @@ EOF
 
 version () {
     cat <<EOF
-runasm version 1.0.3
+runasm version 1.0.4
 Copyright (c) 2022 Anthony Webster
 Licensed under the MIT License: https://spdx.org/licenses/MIT.html
 EOF
@@ -312,7 +304,6 @@ if [ $# -ge 1 ] && [[ ! "$1" =~ ^- ]]; then
 fi
 
 clean_project_when_done='y'
-static_link='y'
 run_gdb=''
 gdb_new_window=''
 valid_opts='1'
@@ -323,7 +314,6 @@ while [ $# -ne 0 ]; do
     case "$arg" in
         -g|--gdb) run_gdb='y' ;;
         -w|--window-gdb) gdb_new_window='y' ;;
-        --link-dynamic) static_link='' ;;
         -l|--link-lib) 
             shift
             libs_to_link+=( "$1" )
@@ -363,14 +353,7 @@ extract_makefile
 info "Building project"
 make_build_opts=()
 [ -n "$run_gdb" ] && make_build_opts+=('DEBUG=y')
-[ -n "$static_link" ] && make_build_opts+=('STATIC_LINK=y')
-make_link_libs_opt=""
-for lib in "${libs_to_link[@]}"; do
-    make_link_libs_opt="${make_link_libs_opt} -l${lib}"
-done
-make_link_libs_opt=$(trim_str "$make_link_libs_opt")
-[ -n "$make_link_libs_opt" ] && make_build_opts+=("LINK_LIBS='${make_link_libs_opt}'")
-echo "${make_build_opts[@]}"
+[[ ! "${libs_to_link[*]}" =~ ^[[:space:]]$ ]] && make_build_opts+=("LINK_LIBS='${libs_to_link[@]/%/-l}'")
 run_make build "${make_build_opts[@]}" || die $? "make failed with exit code $?"
 
 which_quiet () {
