@@ -175,9 +175,8 @@ run_make () {
 
 get_exe_path () {
     # The executable should be the only file in the build directory WITHOUT an extension.
-    local asm_file
-    asm_file="$(find "$project_dir/build" -type f -not -iname '*.*')"
-    realpath -- "${asm_file%.*}"
+    # Just assume that it's the only one there.
+    find "$project_dir/build" -type f -not -iname '*.*' -exec realpath {} \;
 }
 
 start_qemu () {
