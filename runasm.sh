@@ -150,6 +150,7 @@ build: compile link
 
 clean:
 	rm -f $(object_file) $(exe_file)
+	rm -f $(build_dir)/*
 EOF
 }
 
@@ -251,6 +252,8 @@ Options:
     -w, --window-gdb    Run gdb in a new terminal window (has no effect without -g),
                         This option is not supported if using gnome-terminal.
     -l <LIB>, --link-lib <LIB>    Link the library LIB.
+    --clean-only        Clean all build files from project and exit.
+                        The program will not be run.
     --no-clean          Do not remove build files when the program terminates.
     -q, --quiet         Only show output from the assembly program. Error output
                         is still shown.
@@ -308,6 +311,7 @@ if [ $# -ge 1 ] && [[ ! "$1" =~ ^- ]]; then
     shift
 fi
 
+clean_now=''
 clean_project_when_done='y'
 run_gdb=''
 gdb_new_window=''
@@ -324,9 +328,9 @@ while [ $# -ne 0 ]; do
             libs_to_link+=("$1")
             ;;
         -l*) libs_to_link+=("${1/#-l/}") ;;
+        --clean-now) clean_now='y' ;;
         --no-clean) clean_project_when_done='' ;;
         -q|--quiet) STDOUT='/dev/null' ;;
-
         -h|--help) usage ;;
         --examples) examples ;;
         --version) version ;;
@@ -360,6 +364,12 @@ declare -rg MAKEFILE_NAME
 
 info "Extracting makefile"
 extract_makefile
+
+# If we're just cleaning, we can safely exit now.
+# The exit handler will take care of cleaning up.
+if [ -n "$clean_now" ]; then
+    exit 0
+fi
 
 info "Building project"
 make_build_opts=()
