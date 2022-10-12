@@ -4,7 +4,7 @@
 # Description: compile, link, and run a single-file assembly program 
 # Author:      Anthony (AJ) Webster
 # Date:        October 4, 2022
-# Version:     1.0.4
+# Version:     1.0.5
 # License:     MIT License
 # 
 # Copyright (c) 2022 Anthony Webster
@@ -288,13 +288,16 @@ Run the project in the current directory with gdb:
 
 Run the project in a specific directory with gdb:
     $exe $demo_dir -g
+
+Run a project, linking libc (support for printf):
+    $exe -lc
 EOF
     exit 0
 }
 
 version () {
     cat <<'EOF'
-runasm version 1.0.4
+runasm version 1.0.5
 Copyright (c) 2022 Anthony Webster
 Licensed under the MIT License: https://spdx.org/licenses/MIT.html
 EOF

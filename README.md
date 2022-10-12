@@ -37,6 +37,10 @@ Run the project in a specific directory with gdb:
 
 - `runasm.sh /home/example/demo_project -g`
 
+Run a project, linking libc (support for printf):
+
+- `runasm.sh -lc`
+
 ## Bug reporting
 
 Before reporting a bug, make sure you're running the latest version.
