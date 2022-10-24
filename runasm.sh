@@ -121,7 +121,7 @@ endif
 ifdef LINK_LIBS
 #	Since the link options are passed as one string (i.e. '-lc -lm'), we need to split them.
 #	TODO: How will this work with a library that has spaces in the name?
-	link_opts += $(shell printf "%s" $(LINK_LIBS))
+	link_opts += $(LINK_LIBS)
 endif
 
 .PHONY: check_file_count
@@ -325,6 +325,7 @@ while [ $# -ne 0 ]; do
         -w|--window-gdb) gdb_new_window='y' ;;
         -l|--link-lib) 
             shift
+            [ $# -gt 0 ] || die 1 'Missing argument to -l'
             libs_to_link+=("$1")
             ;;
         -l*) libs_to_link+=("${1/#-l/}") ;;
@@ -374,7 +375,12 @@ fi
 info "Building project"
 make_build_opts=()
 [ -n "$run_gdb" ] && make_build_opts+=('DEBUG=y')
-[[ ! "${libs_to_link[*]}" =~ ^[[:space:]]$ ]] && make_build_opts+=("LINK_LIBS='${libs_to_link[@]/#/-l}'")
+[[ ! "${libs_to_link[*]}" =~ ^[[:space:]]$ ]] && {
+    # magical witchcraft time
+    libs_as_args="${libs_to_link[*]/#/-l}"
+    make_build_opts+=("LINK_LIBS=${libs_as_args}")
+}
+info "${make_build_opts[@]}"
 run_make build "${make_build_opts[@]}" || die $? "make failed with exit code $?"
 
 which_quiet () {
