@@ -380,7 +380,6 @@ make_build_opts=()
     libs_as_args="${libs_to_link[*]/#/-l}"
     make_build_opts+=("LINK_LIBS=${libs_as_args}")
 }
-info "${make_build_opts[@]}"
 run_make build "${make_build_opts[@]}" || die $? "make failed with exit code $?"
 
 which_quiet () {
