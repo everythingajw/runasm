@@ -384,26 +384,29 @@ which_quiet () {
     which "$@" > /dev/null 2>&1
 }
 
-# Find terminal emulator to use
-if which_quiet konsole; then
-    terminal_emulator=konsole
-elif which_quiet gnome-terminal; then
-    #terminal_emulator=gnome-terminal
+terminal_emulator=''
+if [ -n "$gdb_new_window" ]; then 
+    # Find terminal emulator to use
+    if which_quiet konsole; then
+        terminal_emulator=konsole
+    elif which_quiet gnome-terminal; then
+        #terminal_emulator=gnome-terminal
 
-    # gnome-terminal got rid of --disable-factory, which is a problem since we can't
-    # launch it and wait for that terminal to close. So in this case, we'll launch
-    # in the same window.
+        # gnome-terminal got rid of --disable-factory, which is a problem since we can't
+        # launch it and wait for that terminal to close. So in this case, we'll launch
+        # in the same window.
 
-    warn "gnome-terminal is not currently supported for running in a separate window."
-    warn "gdb will be launched in the current terminal."
+        warn "gnome-terminal is not currently supported for running in a separate window."
+        warn "gdb will be launched in the current terminal."
 
-    terminal_emulator=''
-elif which_quiet xterm; then
-    terminal_emulator=xterm
-else 
-    # Can't find a terminal emulator. We'll fallback to running in the current window.
-    warn "No terminal emulator found. Running in current window instead."
-    terminal_emulator=''
+        terminal_emulator=''
+    elif which_quiet xterm; then
+        terminal_emulator=xterm
+    else 
+        # Can't find a terminal emulator. We'll fallback to running in the current window.
+        warn "No terminal emulator found. Running in current window instead."
+        terminal_emulator=''
+    fi
 fi
 
 start_qemu
