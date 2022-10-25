@@ -251,6 +251,7 @@ Options:
     -w, --window-gdb    Run gdb in a new terminal window (has no effect without -g),
                         This option is not supported if using gnome-terminal.
     -l <LIB>, --link-lib <LIB>    Link the library LIB.
+    -l<LIB>             Equivalent to -l <LIB>.
     --clean-only        Clean all build files from project and exit.
                         The program will not be run.
     --no-clean          Do not remove build files when the program terminates.
