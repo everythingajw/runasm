@@ -211,7 +211,6 @@ start_gdb () {
             -ex 'set solib-search-path /usr/aarch64-linux-gnu-lib/'
         # gdb-multiarch --nh -q -ex 'set disassemble-next-line on' -ex "target remote localhost:$QEMU_PORT" -ex 'set solib-search-path /usr/aarch64-linux-gnu-lib/' -ex 'layout regs' -ex "file $program_exe_name"
         # gdb-multiarch --nh -q "$project_exe_name" -ex 'set disassemble-next-line on' -ex "target remote localhost:$QEMU_PORT" -ex 'set solib-search-path /usr/aarch64-linux-gnu-lib/' -ex 'layout regs'
-
     else
         # This is kind of gross. But I can do this or fight with escaping quotes. I'll choose this.
         local gdb_args
