@@ -45,6 +45,7 @@ declare -rg WHITE='\033[0;37m'
 
 declare -rg QEMU_PORT=27182
 
+STDIN="/proc/$$/fd/0"
 STDOUT="/proc/$$/fd/1"
 STDERR="/proc/$$/fd/2"
 
@@ -121,7 +122,7 @@ endif
 ifdef LINK_LIBS
 #	Since the link options are passed as one string (i.e. '-lc -lm'), we need to split them.
 #	TODO: How will this work with a library that has spaces in the name?
-	link_opts += $(shell printf "%s" $(LINK_LIBS))
+	link_opts += $(LINK_LIBS)
 endif
 
 .PHONY: check_file_count
@@ -184,11 +185,11 @@ start_qemu () {
     local elf_path=/usr/aarch64-linux-gnu/
     if [ -z "$run_gdb" ]; then
         info "Running"
-        qemu-aarch64 -L "$elf_path" "$(get_exe_path)"
+        qemu-aarch64 -L "$elf_path" "$(get_exe_path)" < "$STDIN"
         info "Program exited with code $?"
     else 
         info "Starting qemu-aarch64 on port $QEMU_PORT"
-        qemu-aarch64 -L "$elf_path" -g "${QEMU_PORT}" "$(get_exe_path)" &
+        qemu-aarch64 -L "$elf_path" -g "${QEMU_PORT}" "$(get_exe_path)" < "$STDIN" &
         sleep 1
     fi
 }
@@ -202,7 +203,7 @@ start_gdb () {
 #     -ex 'layout regs'
 
     if [ -z "$gdb_new_window" ] || [ -z "$terminal_emulator" ]; then
-        gdb-multiarch -nh -q \
+        gdb-multiarch --nh -q -w \
             "$(get_exe_path)" \
             -ex 'layout regs' \
             -ex 'list' \
@@ -211,17 +212,17 @@ start_gdb () {
             -ex 'set solib-search-path /usr/aarch64-linux-gnu-lib/'
         # gdb-multiarch --nh -q -ex 'set disassemble-next-line on' -ex "target remote localhost:$QEMU_PORT" -ex 'set solib-search-path /usr/aarch64-linux-gnu-lib/' -ex 'layout regs' -ex "file $program_exe_name"
         # gdb-multiarch --nh -q "$project_exe_name" -ex 'set disassemble-next-line on' -ex "target remote localhost:$QEMU_PORT" -ex 'set solib-search-path /usr/aarch64-linux-gnu-lib/' -ex 'layout regs'
-
     else
         # This is kind of gross. But I can do this or fight with escaping quotes. I'll choose this.
         local gdb_args
-        gdb_args="-nh -q"
+        gdb_args="--nh -q"
         gdb_args="${gdb_args} '$(get_exe_path)'"
         gdb_args="${gdb_args} -ex 'layout regs'"
         gdb_args="${gdb_args} -ex 'list'"
         gdb_args="${gdb_args} -ex 'set disassemble-next-line on'"
         gdb_args="${gdb_args} -ex 'target remote localhost:$QEMU_PORT'"
         gdb_args="${gdb_args} -ex 'set solib-search-path /usr/aarch64-linux-gnu-lib/'"
+        # gdb_args="${gdb_args} -ex 'b _start'"
 
         gdb_cmd="gdb-multiarch $gdb_args"
 
@@ -252,6 +253,7 @@ Options:
     -w, --window-gdb    Run gdb in a new terminal window (has no effect without -g),
                         This option is not supported if using gnome-terminal.
     -l <LIB>, --link-lib <LIB>    Link the library LIB.
+    -l<LIB>             Equivalent to -l <LIB>.
     --clean-only        Clean all build files from project and exit.
                         The program will not be run.
     --no-clean          Do not remove build files when the program terminates.
@@ -328,6 +330,7 @@ while [ $# -ne 0 ]; do
         -w|--window-gdb) gdb_new_window='y' ;;
         -l|--link-lib) 
             shift
+            [ $# -gt 0 ] || die 1 'Missing argument to -l'
             libs_to_link+=("$1")
             ;;
         -l*) libs_to_link+=("${1/#-l/}") ;;
@@ -377,7 +380,11 @@ fi
 info "Building project"
 make_build_opts=()
 [ -n "$run_gdb" ] && make_build_opts+=('DEBUG=y')
-[[ ! "${libs_to_link[*]}" =~ ^[[:space:]]$ ]] && make_build_opts+=("LINK_LIBS='${libs_to_link[@]/#/-l}'")
+[[ ! "${libs_to_link[*]}" =~ ^[[:space:]]$ ]] && {
+    # magical witchcraft time
+    libs_as_args="${libs_to_link[*]/#/-l}"
+    make_build_opts+=("LINK_LIBS=${libs_as_args}")
+}
 run_make build "${make_build_opts[@]}" || die $? "make failed with exit code $?"
 
 which_quiet () {
