@@ -45,6 +45,7 @@ declare -rg WHITE='\033[0;37m'
 
 declare -rg QEMU_PORT=27182
 
+STDIN="/proc/$$/fd/0"
 STDOUT="/proc/$$/fd/1"
 STDERR="/proc/$$/fd/2"
 
@@ -184,11 +185,11 @@ start_qemu () {
     local elf_path=/usr/aarch64-linux-gnu/
     if [ -z "$run_gdb" ]; then
         info "Running"
-        qemu-aarch64 -L "$elf_path" "$(get_exe_path)"
+        qemu-aarch64 -L "$elf_path" "$(get_exe_path)" < "$STDIN"
         info "Program exited with code $?"
     else 
         info "Starting qemu-aarch64 on port $QEMU_PORT"
-        qemu-aarch64 -L "$elf_path" -g "${QEMU_PORT}" "$(get_exe_path)" &
+        qemu-aarch64 -L "$elf_path" -g "${QEMU_PORT}" "$(get_exe_path)" < "$STDIN" &
         sleep 1
     fi
 }
@@ -202,7 +203,7 @@ start_gdb () {
 #     -ex 'layout regs'
 
     if [ -z "$gdb_new_window" ] || [ -z "$terminal_emulator" ]; then
-        gdb-multiarch -nh -q \
+        gdb-multiarch --nh -q -w \
             "$(get_exe_path)" \
             -ex 'layout regs' \
             -ex 'list' \
@@ -214,13 +215,14 @@ start_gdb () {
     else
         # This is kind of gross. But I can do this or fight with escaping quotes. I'll choose this.
         local gdb_args
-        gdb_args="-nh -q"
+        gdb_args="--nh -q"
         gdb_args="${gdb_args} '$(get_exe_path)'"
         gdb_args="${gdb_args} -ex 'layout regs'"
         gdb_args="${gdb_args} -ex 'list'"
         gdb_args="${gdb_args} -ex 'set disassemble-next-line on'"
         gdb_args="${gdb_args} -ex 'target remote localhost:$QEMU_PORT'"
         gdb_args="${gdb_args} -ex 'set solib-search-path /usr/aarch64-linux-gnu-lib/'"
+        # gdb_args="${gdb_args} -ex 'b _start'"
 
         gdb_cmd="gdb-multiarch $gdb_args"
 
